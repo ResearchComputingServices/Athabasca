@@ -1,0 +1,8 @@
+matplotlib==3.8.2
+mplcursors==0.5.3
+numpy==1.26.4
+scikit_learn==1.4.0
+scipy==1.12.0
+sentence_transformers==2.5.1
+torch==2.2.1
+umap_learn==0.5.5
