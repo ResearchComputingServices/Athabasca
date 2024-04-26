@@ -1,1 +1,2 @@
-from Athabasca.Classifier import SentenceClassifier
+import sys, os
+sys.path.append(os.path.join(os.getcwd(), 'Athabasca/SentenceClassifier'))
