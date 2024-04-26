@@ -1,4 +1,4 @@
-from Classifier import SentenceClassifier
+from Athabasca import SentenceClassifier
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

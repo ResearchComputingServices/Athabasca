@@ -1,0 +1,7 @@
+LICENSE
+setup.py
+Athabasca.egg-info/PKG-INFO
+Athabasca.egg-info/SOURCES.txt
+Athabasca.egg-info/dependency_links.txt
+Athabasca.egg-info/top_level.txt
+pkg/__init__.py
