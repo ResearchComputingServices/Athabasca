@@ -31,9 +31,16 @@ class SentenceClassifier:
         self.umap_transformer = None        
         self.training_data_set = None
         
+        self.is_initialized = False
+        
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def initialize(self)-> None:
+        
+        # if this has already been done no need to do it again
+        if self.is_initialized:
+            return
+        
         # TODO: check that file/folders exist
         
         # load labelled training data from disk
@@ -47,6 +54,8 @@ class SentenceClassifier:
         
         # reduce the training data
         self._perform_reduction()
+        
+        self.is_initialized = True
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
@@ -54,12 +63,14 @@ class SentenceClassifier:
         """trains the classifier on the data provided in data_set
         """
 
+        if not self.is_initialized:
+            self.initialize()
+
         if self._check_data_set():
             
             samples = self.training_data_set.get_reduced_embeddings()
             labels = self.training_data_set.get_label_index_list()
             
-
             self.logreg_classifier.fit( X=samples,
                                         y=labels)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
