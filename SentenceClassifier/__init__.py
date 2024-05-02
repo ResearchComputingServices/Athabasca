@@ -1,2 +1,2 @@
 from .DataSet import DataSet
-from . import Classifier 
+from .SentenceClassifier import Classifier 
