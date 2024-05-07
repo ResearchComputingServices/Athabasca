@@ -20,44 +20,52 @@ class SentenceClassifier:
 
     def __init__(self,
                  name : str,
-                 training_data_path : str,
                  pretrained_transformer_path : str,
                  verbose = True) -> None:
 
         self.name = name
-        self.training_data_path = training_data_path
         self.pretrained_transformer_path = pretrained_transformer_path
 
         self.logreg_classifier = LogisticRegression(verbose=verbose)
 
+        self.training_data_path = None
         self.umap_transformer = None
         self.training_data_set = None
-
         self.is_initialized = False
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def initialize(self)-> None:
         """Get the train set ready for use in training
-        1. before embedding
+        1. perform embedding
         2. train the umap transformer
         3. reduce the embeddings using umap
         """
         
-        # load labelled training data from disk
-        self.training_data_set = DataSet(self.training_data_path)
+        if self._check_training_data_path():    
+            # load labelled training data from disk
+            self.training_data_set = DataSet(self.training_data_path)
 
-        # use the pre-trained model to embedded the trianing data
-        self._perform_embedding()
+            # use the pre-trained model to embedded the trianing data
+            self._perform_embedding()
 
-        # use the pre-trained embeddings to create the umap reduction transformer
-        self._create_umap_transformer()
+            # use the pre-trained embeddings to create the umap reduction transformer
+            self._create_umap_transformer()
 
-        # reduce the training data
-        self._perform_reduction()
+            # reduce the training data
+            self._perform_reduction()
 
-        self.is_initialized = True
+            self.is_initialized = True
+            
+        # TODO: Add warning if no training data specified        
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def set_train_data_path(self,
+                            training_data_path : str) -> None:
+        
+        self.training_data_path = training_data_path
+        
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def train_classifier(self) -> None:
@@ -106,6 +114,12 @@ class SentenceClassifier:
             self.training_data_set.perform_reduction(self.umap_transformer)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  
+    def _check_training_data_path(self) -> bool:
+        return self.training_data_path != None
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     
     def _check_data_set(self) -> bool:
         return self.training_data_set != None
