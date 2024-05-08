@@ -1,4 +1,4 @@
-from Classifier import SentenceClassifier
+from SentenceClassifier.Classifier import SentenceClassifier
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -16,9 +16,10 @@ def main():
         
     # create an instance of a sentence classifier
     c = SentenceClassifier(name = 'VirusClassifier',
-                           training_data_path='sample_data/virus_labelled_data_training.csv',
                            pretrained_transformer_path='all-MiniLM-L6-v2',
                            verbose=False)
+    
+    c.set_train_data_path(training_data_path='sample_data/virus_labelled_data_training.csv',)
     
     c.initialize()
     

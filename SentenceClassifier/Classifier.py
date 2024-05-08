@@ -3,6 +3,8 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from umap import UMAP
 from sentence_transformers import SentenceTransformer
 
+import _io
+
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -32,6 +34,7 @@ class SentenceClassifier:
         self.umap_transformer = None
         self.training_data_set = None
         self.is_initialized = False
+        self.training_data_stream = None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -41,11 +44,11 @@ class SentenceClassifier:
         2. train the umap transformer
         3. reduce the embeddings using umap
         """
-        
-        if self._check_training_data_path():    
+ 
+        if self._check_training_data():    
             # load labelled training data from disk
-            self.training_data_set = DataSet(self.training_data_path)
-
+            self.training_data_set = DataSet(file_stream = self.training_data_stream)
+            
             # use the pre-trained model to embedded the trianing data
             self._perform_embedding()
 
@@ -64,8 +67,15 @@ class SentenceClassifier:
     def set_train_data_path(self,
                             training_data_path : str) -> None:
         
-        self.training_data_path = training_data_path
+        self.training_data_stream = open(training_data_path,'r',encoding='utf-8')
+                   
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+       
+    def set_train_data_stream(  self,
+                                training_data_stream : _io.BufferedReader) -> None:
         
+        self.training_data_stream = training_data_stream
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def train_classifier(self) -> None:
@@ -115,14 +125,13 @@ class SentenceClassifier:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
-    def _check_training_data_path(self) -> bool:
-        return self.training_data_path != None
+    def _check_training_data(self) -> bool:
+        return self.training_data_stream != None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    
     def _check_data_set(self) -> bool:
-        return self.training_data_set != None
+        return (self.training_data_set != None) and (self.training_data_set.n_samples > 0)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -194,7 +203,9 @@ class SentenceClassifier:
                         verbose = False) -> None:
 
 
-        test_data_set = DataSet(test_data_path)
+        # test_data_set = DataSet(test_data_path)
+        file = open(test_data_path,'r', encoding='utf-8')
+        test_data_set = DataSet(file_stream=file)
 
         test_data_set.perform_embedding(SentenceTransformer(self.pretrained_transformer_path))
         test_data_set.perform_reduction(self.umap_transformer)

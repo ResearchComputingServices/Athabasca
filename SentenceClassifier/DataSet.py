@@ -3,6 +3,7 @@ import csv
 import random
 import re
 import logging
+import _io
 
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
@@ -49,8 +50,9 @@ class DataSet:
     """ This object is a set of labelled sentences and their encodings
     """
 
-    def __init__(self,
-                 file_path = ''):
+    def __init__(self, *,
+                 file_path = None,
+                 file_stream = None):
    
         self.data_list = []
         self.labels = {}
@@ -58,13 +60,20 @@ class DataSet:
         self.is_embedded = False
         self.is_reduced = False
 
-        if file_path.endswith('.json'):
-            self.load_json(file_path)
-        elif file_path.endswith('.csv'):
-            self.load_csv(file_path)
-        else:
-            self.file_path = file_path
-
+        if file_path != None:
+            if file_path.endswith('.json'):
+                self.load_json(file_path)
+            elif file_path.endswith('.csv'):
+                self.load_csv(file_path)
+            else:
+                self.file_path = file_path
+        elif file_stream != None:
+            self.load_stream(file_stream)
+            
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    @property
+    def n_samples(self) -> int:
+        return len(self.data_list)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     def check_label(self,
@@ -209,6 +218,25 @@ class DataSet:
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
 
+    def load_stream(self,
+                    file_stream : _io.BufferedReader) -> None:
+
+        reader = csv.reader(file_stream)
+        data = list(reader)
+        
+        # item = (label,sentence)
+        for item in data:
+            # Save the label into the dict of labels if it is not already there
+            if item[0] not in self.labels.keys():
+                self.labels[item[0]] = len(self.labels)
+
+            # Add datum to data set
+            self.data_list.append(Datum(sentence=re.sub(r'[^\x00-\x7F]+',' ', item[1]),
+                                        label=item[0]))
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+
+
     def load_json(  self, 
                     file_path : str) -> None:
         """Load the DataSet from a JSON file
@@ -240,18 +268,7 @@ class DataSet:
         self.file_path = file_path
 
         with open(file_path, 'r', encoding='utf-8') as file:
-            reader = csv.reader(file)
-            data = list(reader)
-
-            # item = (label,sentence)
-            for item in data:
-                # Save the label into the dict of labels if it is not already there
-                if item[0] not in self.labels.keys():
-                    self.labels[item[0]] = len(self.labels)
-
-                # Add datum to data set
-                self.data_list.append(Datum(sentence=re.sub(r'[^\x00-\x7F]+',' ', item[1]),
-                                            label=item[0]))
+            self.load_stream(file)
                  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
