@@ -6,7 +6,9 @@ from sentence_transformers import SentenceTransformer
 import _io
 
 import numpy as np
+import pandas as pd
 
+import plotly_express as px
 import matplotlib.pyplot as plt
 
 from .DataSet import DataSet
@@ -47,20 +49,21 @@ class SentenceClassifier:
  
         if self._check_training_data():    
             # load labelled training data from disk
-            self.training_data_set = DataSet(file_stream = self.training_data_stream)
+            self.training_data_set = DataSet(file_stream=self.training_data_stream)
             
-            # use the pre-trained model to embedded the trianing data
-            self._perform_embedding()
+            if self._check_data_set():
+                # use the pre-trained model to embedded the trianing data
+                self._perform_embedding()
 
-            # use the pre-trained embeddings to create the umap reduction transformer
-            self._create_umap_transformer()
+                # use the pre-trained embeddings to create the umap reduction transformer
+                self._create_umap_transformer()
 
-            # reduce the training data
-            self._perform_reduction()
+                # reduce the training data
+                self._perform_reduction()
 
-            self.is_initialized = True
+                self.is_initialized = True
             
-        # TODO: Add warning if no training data specified        
+        # TODO: Add warning if no training data specified or no samples in data set        
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -90,9 +93,9 @@ class SentenceClassifier:
             samples = self.training_data_set.get_reduced_embeddings()
             labels = self.training_data_set.get_label_index_list()
 
-
             self.logreg_classifier.fit( X=samples,
                                         y=labels)
+            
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def _create_umap_transformer(   self,
@@ -100,12 +103,15 @@ class SentenceClassifier:
                                     metric = 'cosine',
                                     min_dist = 0.) -> None:
 
+        embeddings = self.training_data_set.get_embeddings()
+        targets = self.training_data_set.get_label_index_list()
+
+
+
+ 
         self.umap_transformer = UMAP(   n_components=n_components,
                                         metric=metric,
                                         min_dist=min_dist)
-
-        embeddings = self.training_data_set.get_embeddings()
-        targets = self.training_data_set.get_label_index_list()
 
         self.umap_transformer.fit(  X=embeddings,
                                     y=targets)
@@ -126,7 +132,7 @@ class SentenceClassifier:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
     def _check_training_data(self) -> bool:
-        return self.training_data_stream != None
+        return self.training_data_stream != None 
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -142,8 +148,28 @@ class SentenceClassifier:
         
     def _check_transformer_path(self) -> bool:
         return True
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def generate_interactive_plot(self) -> None:
+        
+        df = pd.DataFrame()
+        df.insert(0, "Reduced Feature 1", self.training_data_set.get_reduced_embeddings()[:, 0], True)
+        df.insert(1, "Reduced Feature 2", self.training_data_set.get_reduced_embeddings()[:, 1], True)
+        df.insert(2, "sentence", self.training_data_set.get_sentences(), True)
+        df.insert(3, "label", self.training_data_set.get_label_list(), True)
+        
+        fig = px.scatter(df,
+                         x="Reduced Feature 1", 
+                         y="Reduced Feature 2", 
+                        #  hover_name="sentence",
+                         hover_name=df["sentence"].str.wrap(30).apply(lambda x: x.replace('\n', '<br>')),
+                         color="label",
+                         hover_data={'label': False, 
+                                     'Reduced Feature 1': False,
+                                     'Reduced Feature 2': False})
+        
+        return fig
+         
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def display_training_results(self) -> None:
 
         print(f'slope = {-1*self.logreg_classifier.coef_[0][0]/self.logreg_classifier.coef_[0][1]}')
@@ -174,7 +200,8 @@ class SentenceClassifier:
         plt.xticks(())
         plt.yticks(())
 
-        plt.show()
+        # plt.show()
+        return plt.gcf()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -202,8 +229,6 @@ class SentenceClassifier:
                         test_label : str,
                         verbose = False) -> None:
 
-
-        # test_data_set = DataSet(test_data_path)
         file = open(test_data_path,'r', encoding='utf-8')
         test_data_set = DataSet(file_stream=file)
 
@@ -258,16 +283,34 @@ class SentenceClassifier:
         accu = (true_pos + true_neg)/ total
         reca = true_pos / (true_pos + false_neg)
 
-        print(f'True +: {true_pos}')
-        print(f'True -: {true_neg}')
-        print(f'False +: {false_pos}')
-        print(f'False -: {false_neg}')
-        print(f'Precision: {prec}')
-        print(f'Accuracy: {accu}')
-        print(f'Recall: {reca}')
-        print(f'F1-Score: {(2*reca*prec/(reca+prec))}')
-        print(f'total: {total}')
-        print(f'# +: {num_pos}')
-        print(f'# -: {num_neg}')
+        if verbose :
+            print(f'True +: {true_pos}')
+            print(f'True -: {true_neg}')
+            print(f'False +: {false_pos}')
+            print(f'False -: {false_neg}')
+            print(f'Precision: {prec}')
+            print(f'Accuracy: {accu}')
+            print(f'Recall: {reca}')
+            print(f'F1-Score: {(2*reca*prec/(reca+prec))}')
+            print(f'total: {total}')
+            print(f'# +: {num_pos}')
+            print(f'# -: {num_neg}')
+
+        results_dict = {}
+        results_dict['True+'] = true_pos
+        results_dict['True-'] = true_neg
+        results_dict['False+'] = false_pos
+        results_dict['False-'] =  false_neg
+        results_dict['Precision'] = prec
+        results_dict['Accuracy'] = accu
+        results_dict['Recall'] = reca
+        results_dict['F1-Score'] = (2*reca*prec/(reca+prec))
+        results_dict['total'] = total
+        results_dict['#+'] = num_pos
+        results_dict['#-'] = num_neg
+
+        return results_dict
+
+      
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

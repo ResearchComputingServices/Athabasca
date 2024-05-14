@@ -145,6 +145,17 @@ class DataSet:
         return np.array([self.labels[d.label] for d in self.data_list])
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   
+    def get_label_list(self) -> list:
+        """returns a numpy array containing strings for the label
+        of each sentence in the data set
+
+        Returns:
+            list: label string in a list
+        """
+        return [d.label for d in self.data_list]
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def get_data_with_label(self,
                             arg_label : str) -> list:
@@ -223,6 +234,8 @@ class DataSet:
 
         reader = csv.reader(file_stream)
         data = list(reader)
+        
+        print(len(data))
         
         # item = (label,sentence)
         for item in data:
