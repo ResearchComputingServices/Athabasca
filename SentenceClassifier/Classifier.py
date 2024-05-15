@@ -105,9 +105,6 @@ class SentenceClassifier:
 
         embeddings = self.training_data_set.get_embeddings()
         targets = self.training_data_set.get_label_index_list()
-
-
-
  
         self.umap_transformer = UMAP(   n_components=n_components,
                                         metric=metric,
