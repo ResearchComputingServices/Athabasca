@@ -227,7 +227,7 @@ class SentenceClassifier:
     def test_classifier(self,
                         test_data_path : str,
                         test_label : str,
-                        verbose = False) -> None:
+                        verbose = False) -> dict:
 
         file = open(test_data_path,'r', encoding='utf-8')
         test_data_set = DataSet(file_stream=file)
