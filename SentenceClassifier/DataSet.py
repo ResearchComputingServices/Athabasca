@@ -39,7 +39,7 @@ class Datum:
             dict: dictionary containing all the data of the object
         """
         return {'sentence' : self.sentence,
-                'label_string' : self.label,
+                'label' : self.label,
                 'encoding' : [str(x) for x in self.encoding],
                 'reduced_encoding' : [str(x) for x in self.reduced_encoding]}
 

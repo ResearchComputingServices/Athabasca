@@ -1,6 +1,7 @@
 import _io
 import os
 import json
+import pickle
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import DecisionBoundaryDisplay
@@ -19,12 +20,18 @@ from .DataSet import DataSet
 from .utils import if_not_exist_create_dir, save_lr_classifier, save_umap_transformer
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# string literals used in the class
 
+BASE_CLASSIFIER_JSON_FILE_NAME = 'base_classifier.json'
+TRAINING_DATA_SET_JSON_FILE_NAME = 'training_data_set.json'
+UMAP_PICKLE_FILE_NAME = 'umap.pkl'
+LOG_REG_PICKLE_FILE_NAME = 'logreg.pkl'
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class SentenceClassifier:
     """Class which encapsulates all the return funtionality to perform
     train a sematic sentence classifier and use it for prediction
-    """
-
+    """  
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def __init__(self,
@@ -150,6 +157,8 @@ class SentenceClassifier:
         
     def _check_transformer_path(self) -> bool:
         return True
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def generate_interactive_plot(self) -> None:
         
@@ -303,7 +312,7 @@ class SentenceClassifier:
 
         return results_dict
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     def save(self,
              output_path : str) -> bool:
@@ -312,22 +321,22 @@ class SentenceClassifier:
         if_not_exist_create_dir(output_path)
         
         # save the current 'state' of the classifier in a JSON file
-        base_classifer_file_path = os.path.join(output_path, 'base_classifier.json')
+        base_classifer_file_path = os.path.join(output_path, BASE_CLASSIFIER_JSON_FILE_NAME)
         
-        base_json_dict = {   'name' : self.name,
-                        'pretrained_transformer_path' : self.pretrained_transformer_path,
-                        'is_initialized' : self.is_initialized}
+        base_json_dict = {  'name' : self.name,
+                            'pretrained_transformer_path' : self.pretrained_transformer_path,
+                            'is_initialized' : self.is_initialized}
         
         with open(base_classifer_file_path, "w+") as final:
             json.dump(base_json_dict, final)
         
         # save the training set to a json file
         if self.training_data_set:
-            training_data_set_file_path = os.path.join(output_path, 'training_data_set.json')
+            training_data_set_file_path = os.path.join(output_path, TRAINING_DATA_SET_JSON_FILE_NAME)
             self.training_data_set.save_as_json(training_data_set_file_path)
         
         # save umap transformer to pickle file
-        umap_pickle_file_path = os.path.join(output_path, 'umap.pkl')
+        umap_pickle_file_path = os.path.join(output_path, UMAP_PICKLE_FILE_NAME)
         try:
             save_umap_transformer(umap_transformer=self.umap_transformer,
                                   file_path=umap_pickle_file_path)
@@ -336,7 +345,7 @@ class SentenceClassifier:
             pass
         
         # save logreg classifier to pickle file
-        logreg_pickle_file_path = os.path.join(output_path, 'logreg.pkl')
+        logreg_pickle_file_path = os.path.join(output_path, LOG_REG_PICKLE_FILE_NAME)
         try:
             save_lr_classifier(lr_classifier=self.logreg_classifier,
                                file_path=logreg_pickle_file_path)
@@ -344,13 +353,31 @@ class SentenceClassifier:
             # TODO: add logging
             pass
         
-        
-              
-        
-   
-        
+ # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
-    
+    def load(   self,
+                input_path : str) -> bool:   
+        
+        # load base classifier data form JSON file
+        base_classifier_json_file_path = os.path.join(input_path, BASE_CLASSIFIER_JSON_FILE_NAME)
 
-
+        json_dict = json.load(open(base_classifier_json_file_path,'r'))
+        self.name = json_dict['name']
+        self.pretrained_transformer_path = json_dict['pretrained_transformer_path']
+        self.is_initialized = bool(json_dict['is_initialized'] == 'true')
+        
+        # load trainging set data
+        training_data_file_path = os.path.join(input_path, TRAINING_DATA_SET_JSON_FILE_NAME)
+        self.training_data_set = DataSet(file_path=training_data_file_path)
+        self.training_data_path = None
+        self.training_data_stream = None    
+        
+        # load log-reg classifier from pickle file 
+        lr_classifier_pickle_file_path = os.path.join(input_path, LOG_REG_PICKLE_FILE_NAME)     
+        self.logreg_classifier =  pickle.load((open(lr_classifier_pickle_file_path, 'rb')))
+        
+        # load umap transformer form pickle file
+        umap_transformer_pickle_file_path = os.path.join(input_path, UMAP_PICKLE_FILE_NAME)
+        self.umap_transformer =  pickle.load((open(umap_transformer_pickle_file_path, 'rb')))
+                  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
