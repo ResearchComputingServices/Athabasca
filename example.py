@@ -15,20 +15,25 @@ TEST_SENTENCES = [TEST_SENTENCE_1, TEST_SENTENCE_2]
 def main():
         
     # create an instance of a sentence classifier
-    c = SentenceClassifier(name = 'VirusClassifier',
+    classifier_train = SentenceClassifier(name = 'VirusClassifier',
                            pretrained_transformer_path='all-MiniLM-L6-v2',
                            verbose=False)
     
-    c.set_train_data_path(training_data_path='sample_data/virus_labelled_data_training.csv',)
+    classifier_train.set_train_data_path(training_data_path='sample_data/virus_labelled_data_training.csv',)
     
-    c.initialize()
+    classifier_train.initialize()
     
-    c.train_classifier()
+    classifier_train.train_classifier()
+    
+    classifier_train.save(output_path='my-classifier')
+    
+    classifier_loaded = SentenceClassifier()
+    classifier_loaded.load(input_path='my-classifier')
     
     for sentence in TEST_SENTENCES:
-    
-        label, prob = c.classify(sentence)
+        label, prob = classifier_loaded.classify(sentence)
         print(f'[{sentence}] --> {label} conf {prob}')
+        
         
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

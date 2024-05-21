@@ -1,9 +1,11 @@
+import _io
+import os
+import json
+
 from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import DecisionBoundaryDisplay
 from umap import UMAP
 from sentence_transformers import SentenceTransformer
-
-import _io
 
 import numpy as np
 import pandas as pd
@@ -11,7 +13,10 @@ import pandas as pd
 import plotly_express as px
 import matplotlib.pyplot as plt
 
+from pprint import pprint
+
 from .DataSet import DataSet
+from .utils import if_not_exist_create_dir, save_lr_classifier, save_umap_transformer
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -23,8 +28,8 @@ class SentenceClassifier:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def __init__(self,
-                 name : str,
-                 pretrained_transformer_path : str,
+                 name = None,
+                 pretrained_transformer_path = None,
                  verbose = True) -> None:
 
         self.name = name
@@ -280,19 +285,6 @@ class SentenceClassifier:
         accu = (true_pos + true_neg)/ total
         reca = true_pos / (true_pos + false_neg)
 
-        if verbose :
-            print(f'True +: {true_pos}')
-            print(f'True -: {true_neg}')
-            print(f'False +: {false_pos}')
-            print(f'False -: {false_neg}')
-            print(f'Precision: {prec}')
-            print(f'Accuracy: {accu}')
-            print(f'Recall: {reca}')
-            print(f'F1-Score: {(2*reca*prec/(reca+prec))}')
-            print(f'total: {total}')
-            print(f'# +: {num_pos}')
-            print(f'# -: {num_neg}')
-
         results_dict = {}
         results_dict['True+'] = true_pos
         results_dict['True-'] = true_neg
@@ -305,9 +297,60 @@ class SentenceClassifier:
         results_dict['total'] = total
         results_dict['#+'] = num_pos
         results_dict['#-'] = num_neg
+        
+        if verbose :
+            pprint(results_dict)
 
         return results_dict
 
-      
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    def save(self,
+             output_path : str) -> bool:
+        
+        # create the output folder if it does not exist
+        if_not_exist_create_dir(output_path)
+        
+        # save the current 'state' of the classifier in a JSON file
+        base_classifer_file_path = os.path.join(output_path, 'base_classifier.json')
+        
+        base_json_dict = {   'name' : self.name,
+                        'pretrained_transformer_path' : self.pretrained_transformer_path,
+                        'is_initialized' : self.is_initialized}
+        
+        with open(base_classifer_file_path, "w+") as final:
+            json.dump(base_json_dict, final)
+        
+        # save the training set to a json file
+        if self.training_data_set:
+            training_data_set_file_path = os.path.join(output_path, 'training_data_set.json')
+            self.training_data_set.save_as_json(training_data_set_file_path)
+        
+        # save umap transformer to pickle file
+        umap_pickle_file_path = os.path.join(output_path, 'umap.pkl')
+        try:
+            save_umap_transformer(umap_transformer=self.umap_transformer,
+                                  file_path=umap_pickle_file_path)
+        except:
+            # TODO: add logging
+            pass
+        
+        # save logreg classifier to pickle file
+        logreg_pickle_file_path = os.path.join(output_path, 'logreg.pkl')
+        try:
+            save_lr_classifier(lr_classifier=self.logreg_classifier,
+                               file_path=logreg_pickle_file_path)
+        except:
+            # TODO: add logging
+            pass
+        
+        
+              
+        
+   
+        
+    
+    
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

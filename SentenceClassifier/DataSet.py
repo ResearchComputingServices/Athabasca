@@ -60,13 +60,13 @@ class DataSet:
         self.is_embedded = False
         self.is_reduced = False
 
+        self.file_path = ''
         if file_path != None:
+            self.file_path = file_path
             if file_path.endswith('.json'):
                 self.load_json(file_path)
             elif file_path.endswith('.csv'):
-                self.load_csv(file_path)
-            else:
-                self.file_path = file_path
+                self.load_csv(file_path)           
         elif file_stream != None:
             self.load_stream(file_stream)
             
