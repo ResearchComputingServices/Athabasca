@@ -234,9 +234,7 @@ class DataSet:
 
         reader = csv.reader(file_stream)
         data = list(reader)
-        
-        print(len(data))
-        
+                
         # item = (label,sentence)
         for item in data:
             # Save the label into the dict of labels if it is not already there
@@ -351,13 +349,17 @@ class DataSet:
         Args:
             umap_transformer (UMAP): UMAP object
         """
-        reduced_embeddings = umap_transformer.transform(X=self.get_embeddings())
-              
-        for i, reduced in enumerate(reduced_embeddings):
-            self.data_list[i].reduced_encoding = list(reduced)
-            
-        self.is_reduced = True
-
+        
+        if self.is_embedded:
+            reduced_embeddings = umap_transformer.transform(X=self.get_embeddings())
+                
+            for i, reduced in enumerate(reduced_embeddings):
+                self.data_list[i].reduced_encoding = list(reduced)
+                
+            self.is_reduced = True
+        # TODO: add logging to warn the user the embedding needs to be done first
+        #else:
+        # logging....   
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def normalize_data(self,
