@@ -367,9 +367,8 @@ class SentenceClassifier:
         self.is_initialized = bool(json_dict['is_initialized'] == 'true')
         
         # load trainging set data
-        training_data_file_path = os.path.join(input_path, TRAINING_DATA_SET_JSON_FILE_NAME)
-        self.training_data_set = DataSet(file_path=training_data_file_path)
-        self.training_data_path = None
+        self.training_data_path = os.path.join(input_path, TRAINING_DATA_SET_JSON_FILE_NAME)
+        self.training_data_set = DataSet(file_path=self.training_data_path)
         self.training_data_stream = None    
         
         # load log-reg classifier from pickle file 
