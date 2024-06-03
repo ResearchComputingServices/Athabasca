@@ -28,6 +28,7 @@ UMAP_PICKLE_FILE_NAME = 'umap.pkl'
 LOG_REG_PICKLE_FILE_NAME = 'logreg.pkl'
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 class SentenceClassifier:
     """Class which encapsulates all the return funtionality to perform
     train a sematic sentence classifier and use it for prediction
