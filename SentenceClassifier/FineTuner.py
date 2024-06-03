@@ -80,9 +80,11 @@ def generate_fine_tuning_data(  train_data_file_path : str,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def fine_tune_llm(  path_to_data_set : str,
-                    path_to_pretrained_llm = PRE_TRAIN_MODEL):
+                    path_to_pretrained_llm = PRE_TRAIN_MODEL,
+                    num_corrections = MAX_CORRECTIONS):
     
-    fine_tuning_data = generate_fine_tuning_data(train_data_file_path=path_to_data_set)
+    fine_tuning_data = generate_fine_tuning_data(train_data_file_path=path_to_data_set,
+                                                 max_corrections=num_corrections)
     
     # Define the model. Either from scratch of by loading a pre-trained model
     model = SentenceTransformer(path_to_pretrained_llm)
