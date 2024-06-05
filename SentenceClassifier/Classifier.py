@@ -50,6 +50,7 @@ class SentenceClassifier:
         self.training_data_set = None
         self.is_initialized = False
         self.training_data_stream = None
+        self.sentence_transformer == None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
