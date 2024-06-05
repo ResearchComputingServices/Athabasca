@@ -15,7 +15,7 @@ PRE_TRAIN_MODEL = 'all-MiniLM-L6-v2'
 FINE_TUNED_MODEL_PATH = './fine-tuned-model'
 PERCENT_TEST = 0.1
 OUTLIER_JSON_FILE_PATH = 'json/fine_tuning_corrections.json'
-MAX_CORRECTIONS = 50
+MAX_CORRECTIONS = 10
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -50,7 +50,7 @@ class SentenceClassifier:
         self.training_data_set = None
         self.is_initialized = False
         self.training_data_stream = None
-        self.sentence_transformer == None
+        self.sentence_transformer = None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -229,7 +229,7 @@ class SentenceClassifier:
         if self.sentence_transformer == None:
             self.sentence_transformer = SentenceTransformer(self.pretrained_transformer_path)
         
-        embedding = list(sentence_transformer.encode(sentences=[sentence],convert_to_numpy=True))
+        embedding = list(self.sentence_transformer.encode(sentences=[sentence],convert_to_numpy=True))
 
         reduced_embedding = self.umap_transformer.transform(X=embedding)
 
