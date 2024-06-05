@@ -136,8 +136,7 @@ class SentenceClassifier:
 
     def _perform_embedding(self) -> None:
         if self._check_transformer_path():
-            sent_trans = SentenceTransformer(self.pretrained_transformer_path)
-            self.training_data_set.perform_embedding(sent_trans)
+            self.training_data_set.perform_embedding(self._get_sentence_transformer())
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -164,6 +163,13 @@ class SentenceClassifier:
         
     def _check_transformer_path(self) -> bool:
         return True
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _get_sentence_transformer(self) -> SentenceTransformer:
+        if self.sentence_transformer == None:
+            self.sentence_transformer = SentenceTransformer(self.pretrained_transformer_path)
+        return self.sentence_transformer
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -223,13 +229,10 @@ class SentenceClassifier:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def classify(   self,
-                    sentence : str) -> tuple:
-        
-        if self.sentence_transformer == None:
-            self.sentence_transformer = SentenceTransformer(self.pretrained_transformer_path)
-        
-        embedding = list(self.sentence_transformer.encode(sentences=[sentence],convert_to_numpy=True))
+    def classify_sentence(  self,
+                            sentence : str) -> tuple:
+               
+        embedding = list(self._get_sentence_transformer().encode(sentences=[sentence],convert_to_numpy=True))
 
         reduced_embedding = self.umap_transformer.transform(X=embedding)
 
@@ -244,6 +247,32 @@ class SentenceClassifier:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def classify_list(  self,
+                        sentences : list) -> dict:
+        
+        results = []
+        
+        data_set = DataSet(sentence_list=sentences)
+        
+        data_set.perform_embedding(self._get_sentence_transformer())
+        data_set.perform_reduction(self.umap_transformer)
+        
+        for datum in data_set.data_list:
+            formatted_datum = np.array(datum.reduced_encoding).reshape(1, -1)
+
+            probs = self.logreg_classifier.predict_proba(formatted_datum)
+
+            predicted_class_index = self.logreg_classifier.predict(formatted_datum)
+            predicted_class_label = data_set.get_label_from_index(predicted_class_index)
+        
+            results.append({'text' : datum.sentence,
+                           'label' : predicted_class_label,
+                           'conf' : probs[0][predicted_class_index]})
+            
+        return results
+        
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     def test_classifier(self,
                         test_data_path : str,
                         test_label : str,
@@ -252,7 +281,7 @@ class SentenceClassifier:
         file = open(test_data_path,'r', encoding='utf-8')
         test_data_set = DataSet(file_stream=file)
 
-        test_data_set.perform_embedding(SentenceTransformer(self.pretrained_transformer_path))
+        test_data_set.perform_embedding(self._get_sentence_transformer())
         test_data_set.perform_reduction(self.umap_transformer)
 
         if not test_data_set.check_label(test_label):
