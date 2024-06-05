@@ -48,8 +48,7 @@ def fine_tune_transformer():
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def main():
-    
-    
+        
     # create an instance of a sentence classifier
     classifier_train = SentenceClassifier(  name = 'VirusClassifier',
                                             pretrained_transformer_path='all-MiniLM-L6-v2',
@@ -74,5 +73,5 @@ def main():
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == '__main__':
-    # main()
-    fine_tune_transformer()
+    main()
+    #fine_tune_transformer()

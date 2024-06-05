@@ -75,7 +75,12 @@ class SentenceClassifier:
                 self._perform_reduction()
 
                 self.is_initialized = True
-            
+            else:
+                print('_check_data_set returned None')
+                input()
+        else:
+            print('_check_training_data returned None')
+            input()   
         # TODO: Add warning if no training data specified or no samples in data set        
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,7 +147,7 @@ class SentenceClassifier:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
     def _check_training_data(self) -> bool:
-        return self.training_data_stream != None 
+        return self._check_training_data != None 
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -162,7 +167,7 @@ class SentenceClassifier:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def generate_interactive_plot(self) -> None:
-        
+                
         df = pd.DataFrame()
         df.insert(0, "Reduced Feature 1", self.training_data_set.get_reduced_embeddings()[:, 0], True)
         df.insert(1, "Reduced Feature 2", self.training_data_set.get_reduced_embeddings()[:, 1], True)

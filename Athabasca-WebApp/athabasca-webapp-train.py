@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 import streamlit as st
-from streamlit_image_coordinates import streamlit_image_coordinates
+#from streamlit_image_coordinates import streamlit_image_coordinates
 
 import pandas as pd
 import glob
@@ -275,9 +275,7 @@ def perform_classifier_page():
                 blocks_complete += 1
                 prog_bar.progress(blocks_complete/total_num_blocks, text='Working...')
         st.session_state[ANALYSIS_COMPLETE_KEY] = True
-                    
-                 
-
+                                    
     col_pdf.markdown("## PDF Images")
     if st.session_state[EXTRACTED_DOC_KEY] != None:
         current_page = st.session_state[IMAGE_INDEX_CUR_KEY]
