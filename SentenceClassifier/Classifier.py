@@ -263,7 +263,7 @@ class SentenceClassifier:
             probs = self.logreg_classifier.predict_proba(formatted_datum)
 
             predicted_class_index = self.logreg_classifier.predict(formatted_datum)
-            predicted_class_label = data_set.get_label_from_index(predicted_class_index)
+            predicted_class_label = self.training_data_set.get_label_from_index(predicted_class_index)
         
             results.append({'text' : datum.sentence,
                            'label' : predicted_class_label,

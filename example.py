@@ -85,10 +85,19 @@ def fine_tune_time_trial():
     test_data = list(csv.reader(open('sample_data/test.csv', 'r')))
     tic = time.time()
     for test in test_data:
-        pprint(test)
         classifier_fine_tuned.classify_sentence(test[1])
     toc = time.time()
     print(f'DONE: {toc-tic}s')
+    
+    test_list = []
+    for test in test_data:
+        test_list.append(test[1])
+    
+    tic = time.time()
+    result = classifier_fine_tuned.classify_list(test_list)
+    toc = time.time()
+    print(f'DONE: {toc-tic}s')
+ 
     
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
