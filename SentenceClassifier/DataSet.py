@@ -53,7 +53,7 @@ class DataSet:
     def __init__(self, *,
                  file_path = None,
                  file_stream = None,
-                 sentence_list = None):
+                 data_list = None):
    
         self.data_list = []
         self.labels = {}
@@ -70,8 +70,8 @@ class DataSet:
                 self.load_csv(file_path)           
         elif file_stream != None:
             self.load_stream(file_stream)
-        elif sentence_list != None:
-            self.read_list(sentence_list)
+        elif data_list != None:
+            self.read_data_list(data_list)
             
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     @property
@@ -90,7 +90,12 @@ class DataSet:
             bool: True if test_label in data set
         """
         
-        return test_label in self.labels.keys()           
+        return test_label in self.labels.keys()             
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def get_labels(self) -> list:
+        return self.labels.keys()
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
@@ -249,11 +254,15 @@ class DataSet:
                                         label=item[0]))
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
 
-    def read_list(  self,
-                    sentences : list) -> None:
+    def read_data_list( self,
+                        data_list : list) -> None:
         
-        for sentence in sentences:
-            datum = Datum(sentence=re.sub(r'[^\x00-\x7F]+',' ', sentence),label='UNKNOWN')
+        for item in data_list:
+            label = item[0]
+            sentence = item[1]
+                       
+            datum = Datum(sentence=re.sub(r'[^\x00-\x7F]+',' ', sentence),label=label)
+            
             self.data_list.append(datum)  
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
