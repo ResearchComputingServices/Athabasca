@@ -6,6 +6,7 @@ from pprint import pprint
 
 from SentenceClassifier.Classifier import SentenceClassifier
 from SentenceClassifier.FineTuner import fine_tune_llm, generate_interactive_plot
+from SentenceClassifier.DataSet import DataSet
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -51,61 +52,71 @@ def fine_tune_transformer_comparison():
            
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
-def fine_tune_time_trial():
+def fine_tune_test():
     
-    training_data_path = 'sample_data/label_sentence_data_cleaned.csv'
     pretrained_transformer_path = 'all-MiniLM-L6-v2'
     
-    # print('Fine tuning LLM...',end='',flush=True)
-    # fine_tuned_path = fine_tune_llm(path_to_data_set=training_data_path,
-    #                                 path_to_pretrained_llm=pretrained_transformer_path)
-    # print('DONE')   
-    fine_tuned_path = pretrained_transformer_path
+    # testing_data_path = 'sample_data/test.csv'
+    # training_data_path = 'sample_data/label_sentence_data_cleaned.csv'
     
+    #training_data_path = 'sample_data/label_sentence_data_balanced.csv'
+    
+    #testing_data_path = 'sample_data/test_full.csv'
+    #training_data_path = 'sample_data/label_sentence_data_FULL.csv'
+    
+    full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
+    full_data_set = DataSet(file_path=full_data_set_training_path)
+    
+    train_set, test_set = full_data_set.split_training_testing(0.7)
+        
+    fine_tuned_path = fine_tune_llm(data_set=train_set,
+                                    path_to_pretrained_llm=pretrained_transformer_path,
+                                    num_corrections=5)
+      
     classifier_fine_tuned = SentenceClassifier( name = 'Fine Tuned',
                                                 pretrained_transformer_path=fine_tuned_path,
                                                 verbose=False)
-
-
-    classifier_fine_tuned.set_train_data_path(training_data_path=training_data_path)
     
-    classifier_fine_tuned.initialize()
-
-    print('Training Classifier...',end='',flush=True)
+    classifier_fine_tuned.add_data_set(train_set)
+    
     classifier_fine_tuned.train_classifier()
-    print('DONE')
 
-    print('Testing Classifer...',end='',flush=True)
-    tic = time.time()
-    classifier_fine_tuned.test_classifier(  test_data_path='sample_data/test.csv',
-                                            test_label='COMP_CON')
-    toc = time.time()
-    print(f'DONE: {toc-tic}s')
+    classifier_fine_tuned.save(output_path='my-fine-tuned-classifier') 
+
+    classifier_load = SentenceClassifier()
+    classifier_load.load(input_path='my-fine-tuned-classifier')
+
+    results = []
+
+    for label in test_set.get_labels():
+        result_dict = classifier_load._test_classifier(test_data_set=test_set,
+                                                             test_label=label)
+        results.append(result_dict)
+
+    fig = classifier_load.generate_interactive_plot()
+
+    pprint(results)
     
-    test_data = list(csv.reader(open('sample_data/test.csv', 'r')))
-    tic = time.time()
-    for test in test_data:
-        pprint(test)
-        classifier_fine_tuned.classify_sentence(test[1])
-    toc = time.time()
-    print(f'DONE: {toc-tic}s')
-    
+    fig.show()   
+        
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def main():
-        
+    
+    TRAINING_DATA_SET_PATH = 'sample_data/virus_labelled_data_training.csv'
+    
     # create an instance of a sentence classifier
     classifier_train = SentenceClassifier(  name = 'VirusClassifier',
                                             pretrained_transformer_path='all-MiniLM-L6-v2',
                                             verbose=False)
-                        
+                      
     classifier_train.set_train_data_path(training_data_path='sample_data/virus_labelled_data_training.csv')
+    # classifier_train.set_train_data_stream(open('sample_data/virus_labelled_data_training.csv', 'r'))
     
-    classifier_train.initialize()
+    classifier_train.train_classifier() 
     
-    classifier_train.train_classifier()
-    
-    classifier_train.save(output_path='my-classifier')
+    # Test the save and load methdods
+    classifier_train.save(output_path='my-classifier')   
     
     classifier_loaded = SentenceClassifier()
     classifier_loaded.load(input_path='my-classifier')
@@ -120,4 +131,4 @@ def main():
 if __name__ == '__main__':
     #main()
     #fine_tune_transformer_comparison()
-    fine_tune_time_trial()
+    fine_tune_test()

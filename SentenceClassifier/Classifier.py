@@ -43,11 +43,11 @@ class SentenceClassifier:
         self.name = name
         self.pretrained_transformer_path = pretrained_transformer_path
 
-        self.logreg_classifier = LogisticRegression(verbose=verbose)
+        self.logreg_classifier = LogisticRegression(verbose=verbose, class_weight='balanced')
 
         self.training_data_path = None
-        self.umap_transformer = None
         self.training_data_set = None
+        self.umap_transformer = None
         self.is_initialized = False
         self.training_data_stream = None
         self.sentence_transformer = None
@@ -60,77 +60,67 @@ class SentenceClassifier:
         2. train the umap transformer
         3. reduce the embeddings using umap
         """
- 
-        if self._check_training_data():    
-            # load labelled training data from disk
-            self.training_data_set = DataSet(file_stream=self.training_data_stream)
-            
-            if self._check_data_set():
-                # use the pre-trained model to embedded the trianing data
-                self._perform_embedding()
+  
+        if self._check_data_set():
+            # use the pre-trained model to embedded the trianing data
+            self._perform_embedding()
 
-                # use the pre-trained embeddings to create the umap reduction transformer
-                self._create_umap_transformer()
+            # use the pre-trained embeddings to create the umap reduction transformer
+            self._create_umap_transformer()
 
-                # reduce the training data
-                self._perform_reduction()
+            # reduce the training data
+            self._perform_reduction()
 
-                self.is_initialized = True
-            else:
-                print('_check_data_set returned None')
-                input()
+            self.is_initialized = True
         else:
-            print('_check_training_data returned None')
-            input()   
+            print('Failed dataset check')    
         # TODO: Add warning if no training data specified or no samples in data set        
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def add_data_set(   self,
+                        data_set : DataSet) -> None:
+        
+        self.training_data_set = data_set
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~               
+
     def set_train_data_path(self,
                             training_data_path : str) -> None:
-        
-        self.training_data_stream = open(training_data_path,'r',encoding='utf-8')
+        # TODO: These should be changed to try-blocks        
+        if training_data_path:
+            self.training_data_set = DataSet(file_path=training_data_path)
                    
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
        
     def set_train_data_stream(  self,
                                 training_data_stream : _io.BufferedReader) -> None:
+        # TODO: These should be changed to try-blocks
+        if training_data_stream:
+            self.training_data_set = DataSet(file_stream=training_data_stream)
         
-        self.training_data_stream = training_data_stream
-
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def train_classifier(self) -> None:
-        """trains the classifier on the data provided in data_set
-        """
+    def get_labels(self) -> list:
+        return self.training_data_set.labels.keys()
 
-        if not self.is_initialized:
-            self.initialize()
-
-        if self._check_data_set():
-
-            samples = self.training_data_set.get_reduced_embeddings()
-            labels = self.training_data_set.get_label_index_list()
-
-            self.logreg_classifier.fit( X=samples,
-                                        y=labels)
-            
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def _create_umap_transformer(   self,
                                     n_components=2,
                                     metric = 'cosine',
-                                    min_dist = 0.) -> None:
+                                    min_dist = 0.01) -> None:
 
         embeddings = self.training_data_set.get_embeddings()
-        targets = self.training_data_set.get_label_index_list()
+        #targets = self.training_data_set.get_label_index_list()
  
         self.umap_transformer = UMAP(   n_components=n_components,
                                         metric=metric,
                                         min_dist=min_dist)
 
-        self.umap_transformer.fit(  X=embeddings,
-                                    y=targets)
+        self.umap_transformer.fit(X=embeddings)
+        # self.umap_transformer.fit(  X=embeddings,
+        #                             y=targets)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -146,11 +136,6 @@ class SentenceClassifier:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
-    def _check_training_data(self) -> bool:
-        return self._check_training_data != None 
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
     def _check_data_set(self) -> bool:
         return (self.training_data_set != None) and (self.training_data_set.n_samples > 0)
 
@@ -167,8 +152,10 @@ class SentenceClassifier:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def _get_sentence_transformer(self) -> SentenceTransformer:
+        
         if self.sentence_transformer == None:
             self.sentence_transformer = SentenceTransformer(self.pretrained_transformer_path)
+
         return self.sentence_transformer
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -248,11 +235,11 @@ class SentenceClassifier:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def classify_list(  self,
-                        sentences : list) -> dict:
+                        data_list : list) -> dict:
         
         results = []
         
-        data_set = DataSet(sentence_list=sentences)
+        data_set = DataSet(data_list=data_list)
         
         data_set.perform_embedding(self._get_sentence_transformer())
         data_set.perform_reduction(self.umap_transformer)
@@ -263,7 +250,7 @@ class SentenceClassifier:
             probs = self.logreg_classifier.predict_proba(formatted_datum)
 
             predicted_class_index = self.logreg_classifier.predict(formatted_datum)
-            predicted_class_label = data_set.get_label_from_index(predicted_class_index)
+            predicted_class_label = self.training_data_set.get_label_from_index(predicted_class_index)
         
             results.append({'text' : datum.sentence,
                            'label' : predicted_class_label,
@@ -273,13 +260,72 @@ class SentenceClassifier:
         
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def train_test_classifier(  self,
+                                training_fraction = 0.7,
+                                verbose = False) -> list:
+        
+        results = []
+
+        if self._check_data_set():
+            training_set, testing_set = self.training_data_set.split_training_testing(training_fraction=training_fraction)
+
+
+
+            self.training_data_set = training_set
+            self.is_initialized = False
+            self.train_classifier()
+            
+            for label in testing_set.get_labels():
+            
+                result_dict = self._test_classifier(test_data_set=testing_set,
+                                                    test_label=label)
+
+                results.append(result_dict)
+            
+        return results
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def train_classifier(self) -> None:
+        """trains the classifier on the data provided in data_set
+        """
+
+        if not self.is_initialized:
+            self.initialize()
+
+        if self._check_data_set():
+
+            samples = self.training_data_set.get_reduced_embeddings()
+            labels = self.training_data_set.get_label_index_list()
+
+            self.logreg_classifier.fit( X=samples,
+                                        y=labels)
+            
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     def test_classifier(self,
                         test_data_path : str,
-                        test_label : str,
-                        verbose = False) -> dict:
+                        verbose = False) -> list:
+        results = []
 
-        file = open(test_data_path,'r', encoding='utf-8')
-        test_data_set = DataSet(file_stream=file)
+        testing_set = DataSet(file_path=test_data_path)
+       
+        for label in testing_set.get_labels():
+            
+                result_dict = self._test_classifier(test_data_set=testing_set, 
+                                                    test_label=label,
+                                                    verbose=verbose)
+
+                results.append(result_dict)
+
+        return results
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _test_classifier(   self,
+                            test_data_set : DataSet,     
+                            test_label : str,
+                            verbose = False) -> list:
 
         test_data_set.perform_embedding(self._get_sentence_transformer())
         test_data_set.perform_reduction(self.umap_transformer)
@@ -299,7 +345,6 @@ class SentenceClassifier:
             formatted_sample = np.array(test_sample.reduced_encoding).reshape(1, -1)
 
             probs = self.logreg_classifier.predict_proba(formatted_sample)
-
             predicted_class_index = self.logreg_classifier.predict(formatted_sample)
             predicted_class_label = test_data_set.get_label_from_index(predicted_class_index)
 
@@ -317,12 +362,12 @@ class SentenceClassifier:
                 else:
                     false_pos += 1
 
-            if verbose and predicted_class_index != actual_class_index:
+            if (verbose and predicted_class_index != actual_class_index):
                 print(f'{i} of {total}')
                 print(test_sample.sentence)
                 print(f'Actual Class: {actual_class_label} {actual_class_index}')
                 print(f'Predicted: {predicted_class_label} {predicted_class_index}')
-                print(probs)
+                print(probs[0])
                 input()
 
         num_pos = len(test_data_set.get_data_with_label(test_label))
@@ -333,6 +378,7 @@ class SentenceClassifier:
         reca = true_pos / (true_pos + false_neg)
 
         results_dict = {}
+        results_dict['Label'] = test_label
         results_dict['True+'] = true_pos
         results_dict['True-'] = true_neg
         results_dict['False+'] = false_pos
@@ -349,7 +395,7 @@ class SentenceClassifier:
             pprint(results_dict)
 
         return results_dict
-
+        
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     def save(self,

@@ -1,4 +1,5 @@
 import random
+import os
 
 import plotly_express as px
 import pandas as pd
@@ -12,7 +13,7 @@ from .DataSet import DataSet
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 PRE_TRAIN_MODEL = 'all-MiniLM-L6-v2'
-FINE_TUNED_MODEL_PATH = './fine-tuned-model'
+FINE_TUNED_MODEL_PATH = 'fine-tuned-model'
 PERCENT_TEST = 0.1
 OUTLIER_JSON_FILE_PATH = 'json/fine_tuning_corrections.json'
 MAX_CORRECTIONS = 10
@@ -40,12 +41,10 @@ def generate_interactive_plot(training_data_set : DataSet) -> None:
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def generate_fine_tuning_data(  train_data_file_path : str,
+def generate_fine_tuning_data(  full_data_set : DataSet,
                                 max_corrections = MAX_CORRECTIONS,
                                 skip_labels = ['Irrelevant']) -> dict:
-            
-    full_data_set = DataSet(file_path=train_data_file_path)
-    
+                
     correction_samples = {'corrections' : []}
 
     labels = list(full_data_set.labels.keys())
@@ -79,13 +78,14 @@ def generate_fine_tuning_data(  train_data_file_path : str,
     
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def fine_tune_llm(  path_to_data_set : str,
+def fine_tune_llm(  data_set : DataSet,
+                    base_output_path = './',
                     path_to_pretrained_llm = PRE_TRAIN_MODEL,
                     num_corrections = MAX_CORRECTIONS):
     
-    fine_tuning_data = generate_fine_tuning_data(train_data_file_path=path_to_data_set,
+    fine_tuning_data = generate_fine_tuning_data(full_data_set=data_set,
                                                  max_corrections=num_corrections)
-    
+        
     # Define the model. Either from scratch of by loading a pre-trained model
     model = SentenceTransformer(path_to_pretrained_llm)
     
@@ -121,14 +121,16 @@ def fine_tune_llm(  path_to_data_set : str,
     train_dataloader = DataLoader(train_examples[TEST_INDEX:], shuffle=True, batch_size=16)
     train_loss = losses.CosineSimilarityLoss(model)
 
-    # Tune the model
+    model_output_path = os.path.join(base_output_path, FINE_TUNED_MODEL_PATH)
+
+    # Tune the model   
     model.fit(train_objectives=[(   train_dataloader, train_loss)], 
                                     epochs=1, 
                                     warmup_steps=100,
                                     save_best_model=True,
-                                    output_path=FINE_TUNED_MODEL_PATH,
+                                    output_path=model_output_path,
                                     show_progress_bar=True,
                                     evaluator=evaluator,
                                     evaluation_steps=500)
     
-    return FINE_TUNED_MODEL_PATH
+    return model_output_path
