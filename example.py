@@ -89,8 +89,8 @@ def fine_tune_test():
     results = []
 
     for label in test_set.get_labels():
-        result_dict = classifier_load._test_classifier(test_data_set=test_set,
-                                                             test_label=label)
+        result_dict = classifier_load._test_classifier( test_data_set=test_set,
+                                                        test_label=label)
         results.append(result_dict)
 
     fig = classifier_load.generate_interactive_plot()

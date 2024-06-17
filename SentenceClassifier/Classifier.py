@@ -61,6 +61,7 @@ class SentenceClassifier:
         3. reduce the embeddings using umap
         """
   
+        # first check that the data set has been defined and it contains more than 1 sample
         if self._check_data_set():
             # use the pre-trained model to embedded the trianing data
             self._perform_embedding()
