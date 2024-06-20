@@ -67,11 +67,11 @@ def fine_tune_test():
     full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
     full_data_set = DataSet(file_path=full_data_set_training_path)
     
-    train_set, test_set = full_data_set.split_training_testing(0.7)
+    train_set, test_set = full_data_set.split_training_testing(0.5)
         
     fine_tuned_path = fine_tune_llm(data_set=train_set,
                                     path_to_pretrained_llm=pretrained_transformer_path,
-                                    num_corrections=5)
+                                    num_corrections=25)
       
     classifier_fine_tuned = SentenceClassifier( name = 'Fine Tuned',
                                                 pretrained_transformer_path=fine_tuned_path,
@@ -98,7 +98,92 @@ def fine_tune_test():
     pprint(results)
     
     fig.show()   
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+def full_test():
+    
+    pretrained_transformer_path = 'all-MiniLM-L6-v2'
+    fine_tuned_path = pretrained_transformer_path
         
+    full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
+    full_data_set = DataSet(file_path=full_data_set_training_path)
+            
+    fine_tuned_path = fine_tune_llm(data_set=full_data_set,
+                                    path_to_pretrained_llm=pretrained_transformer_path,
+                                    num_corrections=25)
+    
+    classifier_fine_tuned = SentenceClassifier( name = 'Fine Tuned',
+                                                pretrained_transformer_path=fine_tuned_path,
+                                                verbose=False)
+    
+    classifier_fine_tuned.add_data_set(full_data_set)
+    
+    classifier_fine_tuned.train_classifier()
+
+    classifier_fine_tuned.save(output_path='my-fine-tuned-classifier') 
+
+    # Now perform the testing
+    testing_data_path = 'sample_data/test.csv'
+    #testing_data_path = 'sample_data/test_full.csv'
+    test_data_list = []
+    with open(testing_data_path, 'r', encoding='utf-8') as test_data_file:
+        reader = csv.reader(test_data_file)
+        test_data_list = list(reader)
+        
+    test_data_set = DataSet(data_list=test_data_list) 
+   
+    results = []
+ 
+    for label in test_data_set.get_labels():
+        result_dict = classifier_fine_tuned._test_classifier(   test_data_set=test_data_set,
+                                                                test_label=label)
+        results.append(result_dict)
+    
+    fig = classifier_fine_tuned.generate_interactive_plot()
+
+    pprint(results)
+    
+    fig.show()   
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+ 
+def load_test():
+     
+    classifier_fine_tuned = SentenceClassifier()
+     
+    classifier_fine_tuned.load(input_path='my-fine-tuned-classifier') 
+    
+    testing_data_path = 'sample_data/test.csv'
+    #testing_data_path = 'sample_data/test_full.csv'
+    
+    test_data_list = []
+    with open(testing_data_path, 'r', encoding='utf-8') as test_data_file:
+        reader = csv.reader(test_data_file)
+        test_data_list = list(reader)
+        
+    #test_data_set = DataSet(data_list=test_data_list) 
+    
+    # results = []
+    
+    # for label in test_data_set.get_labels():
+    #     result_dict = classifier_fine_tuned._test_classifier( test_data_set=test_data_set,
+    #                                                     test_label=label)
+    #     results.append(result_dict)
+
+    results = classifier_fine_tuned.classify_list(test_data_list)
+
+    fig = classifier_fine_tuned.generate_interactive_plot()
+
+    # pprint(results)
+    
+    for result in results:
+        if result['label'] == 'COMP_CON':
+            print(result['conf'])
+    
+    fig.show()   
+    
+    
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def main():
@@ -131,4 +216,6 @@ def main():
 if __name__ == '__main__':
     #main()
     #fine_tune_transformer_comparison()
-    fine_tune_test()
+    #fine_tune_test()
+    #full_test()
+    load_test()

@@ -3,7 +3,10 @@ import os
 import json
 import pickle
 
+from sklearn import preprocessing as p
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.inspection import DecisionBoundaryDisplay
 from umap import UMAP
 from sentence_transformers import SentenceTransformer
@@ -17,7 +20,7 @@ import matplotlib.pyplot as plt
 from pprint import pprint
 
 from .DataSet import DataSet
-from .utils import if_not_exist_create_dir, save_lr_classifier, save_umap_transformer
+from .utils import if_not_exist_create_dir, save_lr_classifier, save_umap_transformer, save_min_max_scaler
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # string literals used in the class
@@ -26,6 +29,7 @@ BASE_CLASSIFIER_JSON_FILE_NAME = 'base_classifier.json'
 TRAINING_DATA_SET_JSON_FILE_NAME = 'training_data_set.json'
 UMAP_PICKLE_FILE_NAME = 'umap.pkl'
 LOG_REG_PICKLE_FILE_NAME = 'logreg.pkl'
+MIN_MAX_SCALER_FILE_NAME = 'min-max-scaler.pkl'
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -46,14 +50,21 @@ class SentenceClassifier:
         self.logreg_classifier = LogisticRegression(verbose=verbose, class_weight='balanced')
 
         self.training_data_path = None
-        self.training_data_set = None
-        self.umap_transformer = None
-        self.is_initialized = False
         self.training_data_stream = None
+        self.training_data_set = None
+        
+        self.umap_transformer = None
+        
         self.sentence_transformer = None
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        self.min_max_scaler = None
+        
+        self.is_initialized = False
+        
+        self.poly = False
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        
     def initialize(self)-> None:
         """Get the train set ready for use in training
         1. perform embedding
@@ -71,6 +82,12 @@ class SentenceClassifier:
 
             # reduce the training data
             self._perform_reduction()
+
+            # initialize data normalizer
+            self._fit_normalizer()
+
+            # normalize the training data
+            self.training_data_set.normalize_data(self.min_max_scaler)
 
             self.is_initialized = True
         else:
@@ -107,10 +124,17 @@ class SentenceClassifier:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def _fit_normalizer(self):
+        self.min_max_scaler = p.MinMaxScaler()
+    
+        self.min_max_scaler.fit(self.training_data_set.get_reduced_embeddings())
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     def _create_umap_transformer(   self,
                                     n_components=2,
                                     metric = 'cosine',
-                                    min_dist = 0.01) -> None:
+                                    min_dist = 0.5) -> None:
 
         embeddings = self.training_data_set.get_embeddings()
         #targets = self.training_data_set.get_label_index_list()
@@ -224,7 +248,9 @@ class SentenceClassifier:
 
         reduced_embedding = self.umap_transformer.transform(X=embedding)
 
-        formatted_sample = np.array(reduced_embedding).reshape(1, -1)
+        normalized_reduced_embedding = self.min_max_scaler.transform(reduced_embedding)
+
+        formatted_sample = np.array(normalized_reduced_embedding).reshape(1, -1)
 
         probs = self.logreg_classifier.predict_proba(formatted_sample)
 
@@ -245,9 +271,13 @@ class SentenceClassifier:
         data_set.perform_embedding(self._get_sentence_transformer())
         data_set.perform_reduction(self.umap_transformer)
         
+        data_set.normalize_data(self.min_max_scaler)
+        
         for datum in data_set.data_list:
             formatted_datum = np.array(datum.reduced_encoding).reshape(1, -1)
-
+            
+            formatted_datum = self.poly.fit_transform(formatted_datum)
+            
             probs = self.logreg_classifier.predict_proba(formatted_datum)
 
             predicted_class_index = self.logreg_classifier.predict(formatted_datum)
@@ -269,8 +299,6 @@ class SentenceClassifier:
 
         if self._check_data_set():
             training_set, testing_set = self.training_data_set.split_training_testing(training_fraction=training_fraction)
-
-
 
             self.training_data_set = training_set
             self.is_initialized = False
@@ -299,8 +327,25 @@ class SentenceClassifier:
             samples = self.training_data_set.get_reduced_embeddings()
             labels = self.training_data_set.get_label_index_list()
 
-            self.logreg_classifier.fit( X=samples,
-                                        y=labels)
+            data_train, data_test, target_train, target_test = train_test_split(samples, labels)
+
+            self.poly = PolynomialFeatures( degree = 5, 
+                                            interaction_only=False, 
+                                            include_bias=False)
+    
+            data_poly =self.poly.fit_transform(data_train)
+            
+            
+            self.logreg_classifier.fit(data_poly,target_train)
+            
+            # score = self.logreg_classifier.score(self.poly.transform(data_test), target_test)
+            # print(score)
+
+            # samples = self.training_data_set.get_reduced_embeddings()
+            # labels = self.training_data_set.get_label_index_list()
+
+            # self.logreg_classifier.fit( X=samples,
+            #                             y=labels)
             
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -310,6 +355,8 @@ class SentenceClassifier:
         results = []
 
         testing_set = DataSet(file_path=test_data_path)
+       
+        testing_set.normalize_data(self.min_max_scaler)
        
         for label in testing_set.get_labels():
             
@@ -330,6 +377,7 @@ class SentenceClassifier:
 
         test_data_set.perform_embedding(self._get_sentence_transformer())
         test_data_set.perform_reduction(self.umap_transformer)
+        test_data_set.normalize_data(self.min_max_scaler)
 
         if not test_data_set.check_label(test_label):
             print(f'WARNING: label <{test_label}> not in data set.')
@@ -343,8 +391,11 @@ class SentenceClassifier:
         false_neg = 0
 
         for i, test_sample in enumerate(test_data_set.data_list):
+            
             formatted_sample = np.array(test_sample.reduced_encoding).reshape(1, -1)
-
+            
+            formatted_sample = self. poly.fit_transform(formatted_sample)
+                
             probs = self.logreg_classifier.predict_proba(formatted_sample)
             predicted_class_index = self.logreg_classifier.predict(formatted_sample)
             predicted_class_label = test_data_set.get_label_from_index(predicted_class_index)
@@ -438,6 +489,17 @@ class SentenceClassifier:
             # TODO: add logging
             pass
         
+        # save min_max_scaler to pickle file
+        minmax_pickle_file_path = os.path.join(output_path, MIN_MAX_SCALER_FILE_NAME)
+        try:
+            save_min_max_scaler(min_max_scaler=self.min_max_scaler,
+                               file_path=minmax_pickle_file_path)
+        except:
+            # TODO: add logging
+            pass
+        
+        MIN_MAX_SCALER_FILE_NAME
+        
  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     def load(   self,
@@ -463,5 +525,9 @@ class SentenceClassifier:
         # load umap transformer form pickle file
         umap_transformer_pickle_file_path = os.path.join(input_path, UMAP_PICKLE_FILE_NAME)
         self.umap_transformer =  pickle.load((open(umap_transformer_pickle_file_path, 'rb')))
+        
+        # load min_max_scaler from pickle file
+        min_max_scaler_pickle_file_path = os.path.join(input_path, MIN_MAX_SCALER_FILE_NAME)
+        self.min_max_scaler =  pickle.load((open(min_max_scaler_pickle_file_path, 'rb')))
                   
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

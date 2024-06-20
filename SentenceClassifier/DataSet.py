@@ -260,6 +260,10 @@ class DataSet:
         for item in data_list:
             label = item[0]
             sentence = item[1]
+               
+            # Save the label into the dict of labels if it is not already there
+            if item[0] not in self.labels.keys():
+                self.labels[item[0]] = len(self.labels)   
                        
             datum = Datum(sentence=re.sub(r'[^\x00-\x7F]+',' ', sentence),label=label)
             
