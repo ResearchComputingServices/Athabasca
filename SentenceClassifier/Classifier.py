@@ -30,6 +30,7 @@ TRAINING_DATA_SET_JSON_FILE_NAME = 'training_data_set.json'
 UMAP_PICKLE_FILE_NAME = 'umap.pkl'
 LOG_REG_PICKLE_FILE_NAME = 'logreg.pkl'
 MIN_MAX_SCALER_FILE_NAME = 'min-max-scaler.pkl'
+SENTENCE_TRANSFORMER_FILE_NAME = 'sentence-transformer.pkl'
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -46,8 +47,11 @@ class SentenceClassifier:
 
         self.name = name
         self.pretrained_transformer_path = pretrained_transformer_path
-
-        self.logreg_classifier = LogisticRegression(verbose=verbose, class_weight='balanced')
+        
+        self.logreg_classifier =  LogisticRegression(penalty="l2", 
+                                                     solver="saga", 
+                                                     max_iter=10000,
+                                                     verbose=verbose)
 
         self.training_data_path = None
         self.training_data_stream = None
@@ -60,8 +64,6 @@ class SentenceClassifier:
         self.min_max_scaler = None
         
         self.is_initialized = False
-        
-        self.poly = False
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         
@@ -134,18 +136,16 @@ class SentenceClassifier:
     def _create_umap_transformer(   self,
                                     n_components=2,
                                     metric = 'cosine',
-                                    min_dist = 0.5) -> None:
+                                    min_dist = 0.01) -> None:
 
         embeddings = self.training_data_set.get_embeddings()
-        #targets = self.training_data_set.get_label_index_list()
  
         self.umap_transformer = UMAP(   n_components=n_components,
                                         metric=metric,
                                         min_dist=min_dist)
 
         self.umap_transformer.fit(X=embeddings)
-        # self.umap_transformer.fit(  X=embeddings,
-        #                             y=targets)
+
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -233,10 +233,10 @@ class SentenceClassifier:
                     edgecolors="k",
                     cmap=plt.cm.Paired)
 
-        plt.xticks(())
-        plt.yticks(())
+        # plt.xticks(())
+        # plt.yticks(())
 
-        # plt.show()
+        plt.show()
         return plt.gcf()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -275,9 +275,7 @@ class SentenceClassifier:
         
         for datum in data_set.data_list:
             formatted_datum = np.array(datum.reduced_encoding).reshape(1, -1)
-            
-            formatted_datum = self.poly.fit_transform(formatted_datum)
-            
+                        
             probs = self.logreg_classifier.predict_proba(formatted_datum)
 
             predicted_class_index = self.logreg_classifier.predict(formatted_datum)
@@ -327,25 +325,8 @@ class SentenceClassifier:
             samples = self.training_data_set.get_reduced_embeddings()
             labels = self.training_data_set.get_label_index_list()
 
-            data_train, data_test, target_train, target_test = train_test_split(samples, labels)
-
-            self.poly = PolynomialFeatures( degree = 5, 
-                                            interaction_only=False, 
-                                            include_bias=False)
-    
-            data_poly =self.poly.fit_transform(data_train)
-            
-            
-            self.logreg_classifier.fit(data_poly,target_train)
-            
-            # score = self.logreg_classifier.score(self.poly.transform(data_test), target_test)
-            # print(score)
-
-            # samples = self.training_data_set.get_reduced_embeddings()
-            # labels = self.training_data_set.get_label_index_list()
-
-            # self.logreg_classifier.fit( X=samples,
-            #                             y=labels)
+            self.logreg_classifier.fit( X=samples,
+                                        y=labels)
             
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -393,8 +374,6 @@ class SentenceClassifier:
         for i, test_sample in enumerate(test_data_set.data_list):
             
             formatted_sample = np.array(test_sample.reduced_encoding).reshape(1, -1)
-            
-            formatted_sample = self. poly.fit_transform(formatted_sample)
                 
             probs = self.logreg_classifier.predict_proba(formatted_sample)
             predicted_class_index = self.logreg_classifier.predict(formatted_sample)

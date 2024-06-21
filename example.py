@@ -2,6 +2,11 @@ import time
 import csv
 
 import plotly_express as px
+import plotly.graph_objects as go
+import matplotlib as plt
+import numpy as np
+import pandas as pd
+
 from pprint import pprint
 
 from SentenceClassifier.Classifier import SentenceClassifier
@@ -103,15 +108,19 @@ def fine_tune_test():
 
 def full_test():
     
+    
+    # full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
+    full_data_set_training_path = 'sample_data/label_sentence_data_FULL.csv'    
+    full_data_set = DataSet(file_path=full_data_set_training_path)
+    
+    fine_tuned_path = 'fine-tuned-model'
+    #pretrained_transformer_path = 'all-mpnet-base-v2' 
     pretrained_transformer_path = 'all-MiniLM-L6-v2'
     fine_tuned_path = pretrained_transformer_path
-        
-    full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
-    full_data_set = DataSet(file_path=full_data_set_training_path)
-            
+                
     fine_tuned_path = fine_tune_llm(data_set=full_data_set,
                                     path_to_pretrained_llm=pretrained_transformer_path,
-                                    num_corrections=25)
+                                    num_corrections=15)
     
     classifier_fine_tuned = SentenceClassifier( name = 'Fine Tuned',
                                                 pretrained_transformer_path=fine_tuned_path,
@@ -122,29 +131,22 @@ def full_test():
     classifier_fine_tuned.train_classifier()
 
     classifier_fine_tuned.save(output_path='my-fine-tuned-classifier') 
-
-    # Now perform the testing
-    testing_data_path = 'sample_data/test.csv'
-    #testing_data_path = 'sample_data/test_full.csv'
-    test_data_list = []
-    with open(testing_data_path, 'r', encoding='utf-8') as test_data_file:
-        reader = csv.reader(test_data_file)
-        test_data_list = list(reader)
-        
-    test_data_set = DataSet(data_list=test_data_list) 
-   
+    
+    testing_data_path = 'sample_data/test_full.csv'
+    testing_data_set = DataSet(file_path=testing_data_path)
+    
     results = []
- 
-    for label in test_data_set.get_labels():
-        result_dict = classifier_fine_tuned._test_classifier(   test_data_set=test_data_set,
+
+    for label in testing_data_set.get_labels():
+        result_dict = classifier_fine_tuned._test_classifier(   test_data_set=testing_data_set,
                                                                 test_label=label)
         results.append(result_dict)
-    
+
     fig = classifier_fine_tuned.generate_interactive_plot()
 
     pprint(results)
     
-    fig.show()   
+    fig.show() 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
  
@@ -154,36 +156,56 @@ def load_test():
      
     classifier_fine_tuned.load(input_path='my-fine-tuned-classifier') 
     
-    testing_data_path = 'sample_data/test.csv'
-    #testing_data_path = 'sample_data/test_full.csv'
-    
-    test_data_list = []
-    with open(testing_data_path, 'r', encoding='utf-8') as test_data_file:
-        reader = csv.reader(test_data_file)
-        test_data_list = list(reader)
+    # classifier_fine_tuned.display_training_results()
+
+    #testing_data_path = 'sample_data/test.csv'
+    testing_data_path = 'sample_data/test_full.csv'
+    testing_data_set = DataSet(file_path=testing_data_path)
         
-    #test_data_set = DataSet(data_list=test_data_list) 
+    testing_data_set.perform_embedding(classifier_fine_tuned._get_sentence_transformer())
+    testing_data_set.perform_reduction(classifier_fine_tuned.umap_transformer)
+    testing_data_set.normalize_data(classifier_fine_tuned.min_max_scaler)
     
-    # results = []
+    # for label in testing_data_set.get_labels():
+    #     data_list = testing_data_set.get_data_with_label(label)
+            
+    df = pd.DataFrame()
+    df.insert(0, "Reduced Feature 1", testing_data_set.get_reduced_embeddings()[:, 0], True)
+    df.insert(1, "Reduced Feature 2", testing_data_set.get_reduced_embeddings()[:, 1], True)
+    df.insert(2, "label", testing_data_set.get_label_index_list(), True)
+    df.insert(3, "sentence",testing_data_set.get_sentences(), True)
+            
+    fig = px.scatter(   df,
+                        x="Reduced Feature 1", 
+                        y="Reduced Feature 2", 
+                        hover_name=df["sentence"].str.wrap(30).apply(lambda x: x.replace('\n', '<br>')),
+                        color="label",
+                        hover_data={'label': False, 
+                                    'Reduced Feature 1': False,
+                                    'Reduced Feature 2': False})
     
-    # for label in test_data_set.get_labels():
-    #     result_dict = classifier_fine_tuned._test_classifier( test_data_set=test_data_set,
-    #                                                     test_label=label)
-    #     results.append(result_dict)
-
-    results = classifier_fine_tuned.classify_list(test_data_list)
-
-    fig = classifier_fine_tuned.generate_interactive_plot()
-
-    # pprint(results)
+    coeff = classifier_fine_tuned.logreg_classifier.coef_
+    inter = classifier_fine_tuned.logreg_classifier.intercept_
     
-    for result in results:
-        if result['label'] == 'COMP_CON':
-            print(result['conf'])
+    print(coeff)
+    print(inter)
     
-    fig.show()   
+    for i in range(0,3):
+        slope = -1*coeff[i][0]/coeff[i][1]
+        y_int = -1*inter[i]/coeff[i][1]
+        print(f'slope: {slope}, y-int: {y_int}')
+        db_x = np.linspace(0, 1, 100)
+        db_y = slope*db_x + y_int
+        fig.add_trace(go.Line(x=db_x, y=db_y))
     
+    fig.update_xaxes(range=[0,1])
+    fig.update_yaxes(range=[0,1])
+    fig.show()
+   
+    results = classifier_fine_tuned._test_classifier(test_data_set=testing_data_set, 
+                                                     test_label='COMP_CON')
     
+    pprint(results)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def main():
@@ -217,5 +239,5 @@ if __name__ == '__main__':
     #main()
     #fine_tune_transformer_comparison()
     #fine_tune_test()
-    #full_test()
-    load_test()
+    full_test()
+    #load_test()
