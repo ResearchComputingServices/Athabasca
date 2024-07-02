@@ -98,7 +98,7 @@ class SentenceClassifier:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def add_data_set(   self,
+    def add_training_data_set(   self,
                         data_set : DataSet) -> None:
         
         self.training_data_set = data_set
@@ -136,7 +136,7 @@ class SentenceClassifier:
     def _create_umap_transformer(   self,
                                     n_components=2,
                                     metric = 'cosine',
-                                    min_dist = 0.01) -> None:
+                                    min_dist = 1.) -> None:
 
         embeddings = self.training_data_set.get_embeddings()
  
@@ -476,9 +476,7 @@ class SentenceClassifier:
         except:
             # TODO: add logging
             pass
-        
-        MIN_MAX_SCALER_FILE_NAME
-        
+                
  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     def load(   self,

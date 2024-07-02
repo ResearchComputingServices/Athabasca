@@ -1,5 +1,4 @@
-import time
-import csv
+import os
 
 import plotly_express as px
 import plotly.graph_objects as go
@@ -26,113 +25,65 @@ TEST_SENTENCES = [TEST_SENTENCE_1, TEST_SENTENCE_2, TEST_SENTENCE_3]
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def run_classifier(classifier : SentenceClassifier,
-                   train_data_path : str):
-    classifier.set_train_data_path(training_data_path=train_data_path)
-    classifier.initialize()
+def virus_data_training():
     
-    return generate_interactive_plot(classifier.training_data_set)
+    TRAINING_DATA_SET_PATH = 'sample_data/virus_labelled_data_training.csv'
+    
+    # create an instance of a sentence classifier
+    classifier_train = SentenceClassifier(  name = 'VirusClassifier',
+                                            pretrained_transformer_path='all-MiniLM-L6-v2',
+                                            verbose=False)
+                      
+    classifier_train.set_train_data_path(training_data_path='sample_data/virus_labelled_data_training.csv')
+    # classifier_train.set_train_data_stream(open('sample_data/virus_labelled_data_training.csv', 'r'))
+    
+    classifier_train.train_classifier() 
+    
+    # Test the save and load methdods
+    classifier_train.save(output_path='my-classifier')   
+    
+    classifier_loaded = SentenceClassifier()
+    classifier_loaded.load(input_path='my-classifier')
+    
+    for sentence in TEST_SENTENCES:
+        label, prob = classifier_loaded.classify_sentence(sentence)
+        print(f'[{sentence}] --> {label} conf {prob}')
 
-def fine_tune_transformer_comparison():
- 
-    training_data_path = 'sample_data/label_sentence_data_cleaned.csv'
-    pretrained_transformer_path = 'all-MiniLM-L6-v2'
-    
-    fine_tuned_path = fine_tune_llm(path_to_data_set=training_data_path,
-                                    path_to_pretrained_llm=pretrained_transformer_path)
-    
-    classifier_pre_train = SentenceClassifier(  name = 'Pre Trained',
-                                                pretrained_transformer_path='all-MiniLM-L6-v2',
-                                                verbose=False)
-    
-    classifier_fine_tuned = SentenceClassifier( name = 'Fine Tuned',
-                                                pretrained_transformer_path=fine_tuned_path,
-                                                verbose=False)
-    
-    pre_trained_fig = run_classifier(classifier_pre_train,training_data_path)    
-    fine_tuned_fig =  run_classifier(classifier_fine_tuned,training_data_path)    
-    
-    pre_trained_fig.show()
-    fine_tuned_fig.show()
-           
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def fine_tune_test():
+def train_example_classifier(   output_path='my-fine-tuned-classifier',
+                                full_data_set_training_path='sample_data/label_sentence_data_cleaned.csv',
+                                fine_tuned_path='fine-tuned-model',
+                                pretrained_transformer_path='all-MiniLM-L6-v2'):
     
-    pretrained_transformer_path = 'all-MiniLM-L6-v2'
-    
-    # testing_data_path = 'sample_data/test.csv'
-    # training_data_path = 'sample_data/label_sentence_data_cleaned.csv'
-    
-    #training_data_path = 'sample_data/label_sentence_data_balanced.csv'
-    
-    #testing_data_path = 'sample_data/test_full.csv'
-    #training_data_path = 'sample_data/label_sentence_data_FULL.csv'
-    
-    full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
+    print('Building data set...',flush=True)  
     full_data_set = DataSet(file_path=full_data_set_training_path)
     
-    train_set, test_set = full_data_set.split_training_testing(0.5)
-        
-    fine_tuned_path = fine_tune_llm(data_set=train_set,
+    
+    print('Fine tuning llm...',flush=True)  
+    fine_tuned_path = fine_tune_llm(data_set=full_data_set,
+                                    base_output_path=output_path,
                                     path_to_pretrained_llm=pretrained_transformer_path,
                                     num_corrections=25)
-      
-    classifier_fine_tuned = SentenceClassifier( name = 'Fine Tuned',
+    
+    print('Initializing Classifier...',flush=True)     
+    classifier_fine_tuned = SentenceClassifier( name = 'Fine-Tuned-'+pretrained_transformer_path,
                                                 pretrained_transformer_path=fine_tuned_path,
-                                                verbose=False)
+                                                verbose=True)
     
-    classifier_fine_tuned.add_data_set(train_set)
+    classifier_fine_tuned.add_training_data_set(full_data_set)
     
+    print('Training Classifier...',flush=True)  
     classifier_fine_tuned.train_classifier()
 
-    classifier_fine_tuned.save(output_path='my-fine-tuned-classifier') 
-
-    classifier_load = SentenceClassifier()
-    classifier_load.load(input_path='my-fine-tuned-classifier')
-
-    results = []
-
-    for label in test_set.get_labels():
-        result_dict = classifier_load._test_classifier( test_data_set=test_set,
-                                                        test_label=label)
-        results.append(result_dict)
-
-    fig = classifier_load.generate_interactive_plot()
-
-    pprint(results)
+    classifier_fine_tuned.save(output_path=output_path) 
     
-    fig.show()   
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
-
-def full_test():
+    print('Saving Classifier...',flush=True)  
+    fig = classifier_fine_tuned.generate_interactive_plot()
+    fig.show() 
     
-    
-    # full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
-    full_data_set_training_path = 'sample_data/label_sentence_data_FULL.csv'    
-    full_data_set = DataSet(file_path=full_data_set_training_path)
-    
-    fine_tuned_path = 'fine-tuned-model'
-    #pretrained_transformer_path = 'all-mpnet-base-v2' 
-    pretrained_transformer_path = 'all-MiniLM-L6-v2'
-    fine_tuned_path = pretrained_transformer_path
-                
-    fine_tuned_path = fine_tune_llm(data_set=full_data_set,
-                                    path_to_pretrained_llm=pretrained_transformer_path,
-                                    num_corrections=15)
-    
-    classifier_fine_tuned = SentenceClassifier( name = 'Fine Tuned',
-                                                pretrained_transformer_path=fine_tuned_path,
-                                                verbose=False)
-    
-    classifier_fine_tuned.add_data_set(full_data_set)
-    
-    classifier_fine_tuned.train_classifier()
-
-    classifier_fine_tuned.save(output_path='my-fine-tuned-classifier') 
-    
-    testing_data_path = 'sample_data/test_full.csv'
+    print('Testing Classifier...',flush=True)  
+    testing_data_path = 'sample_data/test.csv'
     testing_data_set = DataSet(file_path=testing_data_path)
     
     results = []
@@ -142,12 +93,9 @@ def full_test():
                                                                 test_label=label)
         results.append(result_dict)
 
-    fig = classifier_fine_tuned.generate_interactive_plot()
-
     pprint(results)
+   
     
-    fig.show() 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
  
 def load_test():
@@ -206,38 +154,26 @@ def load_test():
                                                      test_label='COMP_CON')
     
     pprint(results)
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def main():
+
+    # #pretrained_transformer_path = 'all-mpnet-base-v2' 
+    # #full_data_set_training_path = 'sample_data/label_sentence_data_FULL.csv'     
     
-    TRAINING_DATA_SET_PATH = 'sample_data/virus_labelled_data_training.csv'
+    # pretrained_transformer_path = 'all-MiniLM-L6-v2'
+    # full_data_set_training_path = 'sample_data/label_sentence_data_cleaned.csv'    
+    # output_path = 'my-fine-tuned-classifier'
+    # fine_tuned_llm_path = 'fine-tuned-model'
     
-    # create an instance of a sentence classifier
-    classifier_train = SentenceClassifier(  name = 'VirusClassifier',
-                                            pretrained_transformer_path='all-MiniLM-L6-v2',
-                                            verbose=False)
-                      
-    classifier_train.set_train_data_path(training_data_path='sample_data/virus_labelled_data_training.csv')
-    # classifier_train.set_train_data_stream(open('sample_data/virus_labelled_data_training.csv', 'r'))
+    # train_example_classifier(   output_path=output_path,
+    #                             full_data_set_training_path=full_data_set_training_path,
+    #                             fine_tuned_path=fine_tuned_llm_path,
+    #                             pretrained_transformer_path=pretrained_transformer_path)
     
-    classifier_train.train_classifier() 
-    
-    # Test the save and load methdods
-    classifier_train.save(output_path='my-classifier')   
-    
-    classifier_loaded = SentenceClassifier()
-    classifier_loaded.load(input_path='my-classifier')
-    
-    for sentence in TEST_SENTENCES:
-        label, prob = classifier_loaded.classify_sentence(sentence)
-        print(f'[{sentence}] --> {label} conf {prob}')
-        
-        
+    load_test()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == '__main__':
-    #main()
-    #fine_tune_transformer_comparison()
-    #fine_tune_test()
-    full_test()
-    #load_test()
+    main()
